@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hybrid Biosensor Telemetry | Prototype</title>
+    <style>
+        /* Modern Clinical CSS Variables */
+        :root {
+            --bg-body: #f4f7f9;
+            --bg-card: #ffffff;
+            --text-main: #2d3436;
+            --text-muted: #636e72;
+            --accent-teal: #008080;
+            --accent-blue: #0984e3;
+            --accent-red: #d63031;
+            --nav-bg: #1e272e;
+            --nav-hover: #485460;
+            --border-light: #dfe6e9;
+            --shadow-sm: 0 4px 6px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            flex-direction: row;
+        }
+
+        /* --- Navigation Sidebar (PC) --- */
+        .sidebar {
+            width: 260px;
+            background-color: var(--nav-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: rgba(0, 128, 128, 0.2);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .sidebar-header h2 { font-size: 1.2rem; color: #81ecec; letter-spacing: 1px; }
+
+        .mobile-dropdown-btn { display: none; }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .nav-links button {
+            background: none;
+            border: none;
+            color: #b2bec3;
+            text-align: left;
+            padding: 18px 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .nav-links button:hover, .nav-links button.active {
+            background-color: var(--nav-hover);
+            color: white;
+            border-left-color: var(--accent-teal);
+        }
+
+        /* --- Main Content Area --- */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px 40px;
+            position: relative;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        .header-top h1 { font-size: 2rem; font-weight: 600; }
+        .sys-date { color: var(--accent-teal); font-weight: 600; font-size: 0.9rem; }
+
+        .tab-section { display: none; animation: fadeIn 0.4s ease; }
+        .tab-section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Grid & Cards --- */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow-sm);
+            border-top: 4px solid var(--accent-teal);
+        }
+        .card.blue { border-top-color: var(--accent-blue); }
+        .card.red { border-top-color: var(--accent-red); }
+
+        .card-title { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px;}
+        .card-value { font-size: 2.5rem; font-weight: 700; margin-bottom: 5px; }
+        .card-unit { font-size: 1rem; color: var(--text-muted); font-weight: 400; }
+
+        /* --- Tables & Inputs --- */
+        .patient-table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; box-shadow: var(--shadow-sm); border-radius: 8px; overflow: hidden; }
+        .patient-table th, .patient-table td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-light); font-size: 0.95rem; }
+        .patient-table th { background: var(--bg-body); color: var(--text-muted); font-weight: 600; }
+        
+        .slider-group { margin-bottom: 25px; }
+        .slider-group label { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; font-size: 0.95rem; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent-teal); }
+
+        /* --- Buttons & Modals --- */
+        .btn-export { background: var(--accent-teal); color: white; border: none; padding: 15px 30px; font-size: 1rem; border-radius: 8px; cursor: pointer; box-shadow: var(--shadow-sm); transition: 0.3s; width: 100%; max-width: 300px; }
+        .btn-export:hover { background: #006666; transform: translateY(-2px); }
+        #canvas-container { margin-top: 30px; display: none; background: #e2e8f0; padding: 15px; border-radius: 8px; text-align: center;}
+        canvas { max-width: 100%; height: auto; background: white; box-shadow: var(--shadow-lg); border-radius: 8px; }
+
+        /* --- Settings Toggles --- */
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-light); }
+        .toggle-switch { position: relative; width: 50px; height: 26px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-teal); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* --- Mobile Optimization --- */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow-y: auto; }
+            .sidebar { width: 100%; height: auto; flex-direction: column; padding: 0; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
+            .sidebar-header { width: 100%; padding: 12px 15px; border-bottom: none; }
+            .sidebar-header h2 { font-size: 1.1rem; }
+            .mobile-dropdown-btn { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 15px 20px; background-color: var(--nav-hover); color: white; border: none; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 1rem; font-weight: 600; cursor: pointer; }
+            .mobile-dropdown-btn span:last-child { font-size: 0.8rem; transition: transform 0.3s ease; }
+            .mobile-dropdown-btn.open span:last-child { transform: rotate(180deg); }
+            .nav-links { display: none; flex-direction: column; width: 100%; padding: 0; background-color: var(--nav-bg); }
+            .nav-links.show { display: flex; }
+            .nav-links button { padding: 15px 20px; font-size: 1rem; text-align: left; border-left: none; border-bottom: 1px solid rgba(255,255,255,0.05); width: 100%; }
+            .nav-links button:hover, .nav-links button.active { border-left: none; background: rgba(255,255,255,0.05); }
+            .main-content { padding: 20px 15px 40px 15px; overflow-y: visible; }
+            .header-top { flex-direction: column; align-items: flex-start; gap: 8px; border-bottom: 1px solid var(--border-light); padding-bottom: 15px; }
+            .header-top h1 { font-size: 1.6rem; }
+            .sys-date { font-size: 0.85rem; }
+            .card { padding: 20px; }
+            .card-value { font-size: 2.2rem; }
+            .setting-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .setting-item > div { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+            .setting-item > div > div { font-size: 0.8rem; margin-top: 5px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>BIOMARK OS</h2>
+        </div>
+        
+        <button class="mobile-dropdown-btn" id="mobileMenuBtn" onclick="toggleMobileMenu()">
+            <span id="current-mobile-tab">Live Dashboard</span>
+            <span>▼</span>
+        </button>
+
+        <div class="nav-links" id="navMenu">
+            <button class="active" onclick="switchTab(event, 'tab-dashboard')">Live Dashboard</button>
+            <button onclick="switchTab(event, 'tab-history')">Patient History</button>
+            <button onclick="switchTab(event, 'tab-calibration')">Sensor Calibration</button>
+            <button onclick="switchTab(event, 'tab-export')">Export Data</button>
+            <button onclick="switchTab(event, 'tab-settings')">System Settings</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        
+        <div class="header-top">
+            <h1 id="page-title">Live Dashboard</h1>
+            <div class="sys-date" id="current-date">System Time: Loading...</div>
+        </div>
+
+        <!-- 1. Live Dashboard -->
+        <div id="tab-dashboard" class="tab-section active">
+            <div class="grid-container">
+                <div class="card">
+                    <div class="card-title">Metabolic (ISF Glucose)</div>
+                    <div class="card-value">105 <span class="card-unit">mg/dL</span></div>
+                    <p style="color: #27ae60; font-weight: 600; font-size: 0.9rem;">● Stable Range</p>
+                    <svg viewBox="0 0 300 80" preserveAspectRatio="none" style="width:100%; height:60px; margin-top:15px;">
+                        <path id="dash-glucose-wave" d="" fill="none" stroke="var(--accent-teal)" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="card blue">
+                    <div class="card-title">Respiratory (SpO2)</div>
+                    <div class="card-value">98 <span class="card-unit">%</span></div>
+                    <p style="color: var(--accent-blue); font-weight: 600; font-size: 0.9rem;">● Optimal</p>
+                    <svg viewBox="0 0 300 80" preserveAspectRatio="none" style="width:100%; height:60px; margin-top:15px;">
+                        <path id="dash-spo2-wave" d="" fill="none" stroke="var(--accent-blue)" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div class="card red">
+                    <div class="card-title">Cardiovascular (Heart Rate)</div>
+                    <div class="card-value">72 <span class="card-unit">BPM</span></div>
+                    <p style="color: var(--accent-red); font-weight: 600; font-size: 0.9rem;">● Normal Sinus Rhythm</p>
+                    <svg viewBox="0 0 300 80" preserveAspectRatio="none" style="width:100%; height:60px; margin-top:15px;">
+                        <path id="dash-ecg-wave" d="" fill="none" stroke="var(--accent-red)" stroke-width="2.5" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Patient History -->
+        <div id="tab-history" class="tab-section">
+            <div class="card">
+                <div class="card-title">Active Profile</div>
+                <div style="overflow-x:auto;">
+                    <table class="patient-table">
+                        <tr><th>Parameter</th><th>Patient Detail</th></tr>
+                        <tr><td>Full Name</td><td><strong>Unmesh Biswas</strong> (Enrl: 26PEE001)</td></tr>
+                        <tr><td>Age</td><td>24 Years</td></tr>
+                        <tr><td>Height</td><td>169 cm (5 ft 6.5 in)</td></tr>
+                        <tr><td>Weight</td><td>65 kg</td></tr>
+                        <tr><td>Blood Group</td><td><span style="color: var(--accent-red); font-weight:bold;">B+</span></td></tr>
+                        <tr><td>Visual Acuity</td><td>6/9</td></tr>
+                        <tr><td>Patch Status</td><td>Active (Right Arm, Deltoid)</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Calibration -->
+        <div id="tab-calibration" class="tab-section">
+            <div class="grid-container">
+                <div class="card">
+                    <div class="card-title">Polymer Array Tuning (Live)</div>
+                    <div class="slider-group">
+                        <label>Sampling Rate <span><span id="hz-val">500</span> Hz</span></label>
+                        <input type="range" id="rate-slider" min="100" max="1000" value="500" oninput="document.getElementById('hz-val').innerText = this.value;">
+                    </div>
+                    <div class="slider-group">
+                        <label>Enzyme Gain Threshold <span><span id="gain-val">2.4</span> mV</span></label>
+                        <input type="range" id="gain-slider" min="0" max="5" step="0.1" value="2.4" oninput="document.getElementById('gain-val').innerText = this.value;">
+                    </div>
+                    <div class="slider-group">
+                        <label>Noise Filter (Cutoff) <span><span id="filter-val">60</span> Hz</span></label>
+                        <input type="range" id="filter-slider" min="10" max="120" value="60" oninput="document.getElementById('filter-val').innerText = this.value;">
+                    </div>
+                </div>
+
+                <div class="card" style="background: #1e272e; color: white;">
+                    <div class="card-title" style="color: #b2bec3;">Live Oscilloscope Feed</div>
+                    <svg id="calib-svg" viewBox="0 0 400 150" style="width:100%; height:150px; background:#2d3436; border-radius:5px; margin-top:10px;">
+                        <path id="raw-signal" fill="none" stroke="#e17055" stroke-width="1.5" stroke-linejoin="round" opacity="0.6"/>
+                        <path id="clean-signal" fill="none" stroke="#00b894" stroke-width="2.5" stroke-linejoin="round"/>
+                    </svg>
+                    <p style="font-size: 0.8rem; margin-top: 10px; color:#b2bec3;">Red: Raw Transducer | Green: Filtered ISF Output</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Export -->
+        <div id="tab-export" class="tab-section">
+            <div class="card">
+                <div class="card-title">Data Serialization & Profile Generation</div>
+                <p style="margin-bottom: 20px; color: var(--text-muted); font-size: 0.95rem;">
+                    Compile patient metrics and sensor array data into a single verified image profile for medical records.
+                </p>
+                <button class="btn-export" onclick="generateProfileImage()">Generate Patient Profile</button>
+                <div id="canvas-container">
+                    <p style="margin-bottom: 10px; font-weight:600; color:var(--text-main); font-size:0.9rem;">Generated Render:</p>
+                    <canvas id="profileCanvas" width="600" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Settings -->
+        <div id="tab-settings" class="tab-section">
+            <div class="card">
+                <div class="card-title">Patch Firmware Configurations</div>
+                <div class="setting-item">
+                    <div><strong>Low Power BLE Mode</strong><div style="font-size:0.85rem; color:var(--text-muted);">Reduces transmission frequency</div></div>
+                    <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div><strong>Edge AI Pre-processing</strong><div style="font-size:0.85rem; color:var(--text-muted);">Run denoising on MCU</div></div>
+                    <label class="toggle-switch"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+                <div class="setting-item">
+                    <div><strong>Strict Anomaly Alerts</strong><div style="font-size:0.85rem; color:var(--text-muted);">Trigger haptic feedback</div></div>
+                    <label class="toggle-switch"><input type="checkbox"><span class="slider"></span></label>
+                </div>
+                <div class="setting-item" style="border:none;">
+                    <div style="width: 100%;">
+                        <strong>Telemetry Upload Interval</strong>
+                        <select style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; margin-top:10px; width:100%;">
+                            <option>Real-time (1s)</option>
+                            <option selected>Continuous (10s)</option>
+                            <option>Batch (1 min)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', dateOptions);
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('navMenu');
+            const btn = document.getElementById('mobileMenuBtn');
+            menu.classList.toggle('show');
+            btn.classList.toggle('open');
+        }
+
+        function switchTab(event, tabId) {
+            document.querySelectorAll('.nav-links button').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            
+            const tabName = event.currentTarget.innerText;
+            document.getElementById('page-title').innerText = tabName;
+            document.getElementById('current-mobile-tab').innerText = tabName;
+            
+            document.querySelectorAll('.tab-section').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            const menu = document.getElementById('navMenu');
+            if (menu.classList.contains('show')) {
+                menu.classList.remove('show');
+                document.getElementById('mobileMenuBtn').classList.remove('open');
+            }
+        }
+
+        // --- GLOBAL LIVE ANIMATION ENGINE ---
+        let timeOffset = 0;
+
+        function liveAnimationLoop() {
+            timeOffset += 0.05; // Master clock speed
+
+            if (document.getElementById('tab-dashboard').classList.contains('active')) {
+                
+                // 1. Metabolic Glucose (Slow drifting wave)
+                const glucosePath = document.getElementById('dash-glucose-wave');
+                if (glucosePath) {
+                    let gPath = "";
+                    for(let x = 0; x <= 300; x += 10) {
+                        let y = 40 + Math.sin(x/50 - timeOffset*0.2) * 5 + Math.cos(x/30 + timeOffset*0.1) * 3;
+                        gPath += (x === 0 ? "M " : "L ") + x + " " + y + " ";
+                    }
+                    glucosePath.setAttribute("d", gPath);
+                }
+
+                // 2. Respiratory SpO2 (Smooth sine wave)
+                const spo2Path = document.getElementById('dash-spo2-wave');
+                if (spo2Path) {
+                    let sPath = "";
+                    for(let x = 0; x <= 300; x += 10) {
+                        let y = 40 + Math.sin((x / 20) - (timeOffset * 1.5)) * 15;
+                        sPath += (x === 0 ? "M " : "L ") + x + " " + y + " ";
+                    }
+                    spo2Path.setAttribute("d", sPath);
+                }
+
+                // 3. Cardiovascular Heart Rate (Realistic PQRST ECG Wave scrolling left)
+                const ecgPath = document.getElementById('dash-ecg-wave');
+                if (ecgPath) {
+                    let ePath = "";
+                    // 150px is roughly one heartbeat width. Speed matches roughly 72 BPM.
+                    let speed = timeOffset * 40; 
+                    
+                    for(let x = 0; x <= 300; x += 2) {
+                        // Calculate position in the heartbeat cycle
+                        let cycle = (x - speed) % 150;
+                        if (cycle < 0) cycle += 150; // Handle negative JS modulo
+                        
+                        let y = 40; // Base Isoelectric line
+                        
+                        // ECG Mathematical piecewise function
+                        if(cycle > 10 && cycle < 25) { 
+                            y -= Math.sin((cycle-10)/15 * Math.PI) * 4; // P wave
+                        } else if(cycle >= 35 && cycle < 40) { 
+                            y += 5 * ((cycle-35)/5); // Q wave (dip)
+                        } else if(cycle >= 40 && cycle < 45) { 
+                            y += 5 - 45 * ((cycle-40)/5); // Q to R (sharp spike up)
+                        } else if(cycle >= 45 && cycle < 50) { 
+                            y -= 40 - 55 * ((cycle-45)/5); // R to S (sharp spike down past base)
+                        } else if(cycle >= 50 && cycle < 55) { 
+                            y += 15 - 15 * ((cycle-50)/5); // S back to baseline
+                        } else if(cycle > 70 && cycle < 100) { 
+                            y -= Math.sin((cycle-70)/30 * Math.PI) * 7; // T wave
+                        }
+                        
+                        ePath += (x === 0 ? "M " : "L ") + x + " " + y + " ";
+                    }
+                    ecgPath.setAttribute("d", ePath);
+                }
+            }
+
+            // Oscilloscope Calibration Animation
+            if (document.getElementById('tab-calibration').classList.contains('active')) {
+                const rawPath = document.getElementById('raw-signal');
+                const cleanPath = document.getElementById('clean-signal');
+                const filterVal = document.getElementById('filter-slider').value;
+                const rateVal = document.getElementById('rate-slider').value;
+                
+                let rawD = ""; let cleanD = "";
+                let animSpeed = timeOffset * (rateVal / 250);
+
+                for(let x = 0; x <= 400; x += 5) {
+                    let phase = (x * (rateVal/10000)) - animSpeed;
+                    let base = Math.sin(phase) * 40;
+                    let noise = (Math.random() - 0.5) * (150 - filterVal); 
+                    
+                    rawD += (x === 0 ? "M " : "L ") + x + " " + (75 + base + noise) + " ";
+                    cleanD += (x === 0 ? "M " : "L ") + x + " " + (75 + base) + " ";
+                }
+                
+                if (rawPath) rawPath.setAttribute("d", rawD);
+                if (cleanPath) cleanPath.setAttribute("d", cleanD);
+            }
+
+            requestAnimationFrame(liveAnimationLoop);
+        }
+
+        liveAnimationLoop();
+
+        function generateProfileImage() {
+            document.getElementById('canvas-container').style.display = 'block';
+            const canvas = document.getElementById('profileCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 600, 400);
+            ctx.fillStyle = '#008080'; ctx.fillRect(0, 0, 600, 80);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 28px Arial'; ctx.fillText('BIOMEDICAL SENSOR PROFILE', 20, 50);
+            ctx.font = 'italic 16px Arial'; ctx.fillStyle = '#e0f2f1'; ctx.fillText('NIT Agartala', 450, 50);
+
+            ctx.fillStyle = '#2d3436'; ctx.font = 'bold 22px Arial'; ctx.fillText('PATIENT: UNMESH BISWAS', 30, 130);
+            ctx.font = '18px Arial'; ctx.fillStyle = '#636e72';
+            ctx.fillText('ID Number: 26PEE001', 30, 170); ctx.fillText('Age: 24 Years', 30, 210); ctx.fillText('Blood Group: B+', 30, 250);
+            ctx.fillText('Height: 169 cm (5\' 6.5")', 300, 170); ctx.fillText('Weight: 65 kg', 300, 210); ctx.fillText('Vision Acuity: 6/9', 300, 250);
+
+            ctx.beginPath(); ctx.moveTo(30, 290); ctx.lineTo(570, 290); ctx.strokeStyle = '#dfe6e9'; ctx.stroke();
+            ctx.fillStyle = '#0984e3'; ctx.font = 'bold 18px Arial'; ctx.fillText('Sensor Array Status: CALIBRATED & ACTIVE', 30, 330);
+            ctx.fillStyle = '#b2bec3'; ctx.font = '14px Arial';
+            ctx.fillText('Rendered via Edge Dashboard on: ' + new Date().toLocaleString(), 30, 365);
+            
+            ctx.fillStyle = '#2d3436';
+            for(let i=0; i<15; i++) { ctx.fillRect(450 + (i*8), 310, Math.random() > 0.5 ? 4 : 2, 40); }
+        }
+    </script>
+</body>
+</html>
